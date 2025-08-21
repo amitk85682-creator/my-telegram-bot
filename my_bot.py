@@ -1,3 +1,4 @@
+# Triggering a new deploy
 import google.generativeai as genai
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -76,4 +77,5 @@ def main():
     app.run_polling()
 
 if __name__ == '__main__':
+
     main()
