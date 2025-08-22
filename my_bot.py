@@ -119,10 +119,9 @@ def home():
 
 @flask_app.route(f'/{UPDATE_SECRET_CODE}')
 def trigger_update():
-    # एक नए थ्रेड में अपडेट चलाएं ताकि वेबसाइट हैंग न हो
-    update_thread = threading.Thread(target=update_movies_in_db)
-    update_thread.start()
-    return "Movie update process has been started in the background."
+    # अपडेट को सीधे चलाएं
+    result = update_movies_in_db()
+    return result
 
 def run_flask():
     port = int(os.environ.get('PORT', 8080))
@@ -167,3 +166,4 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
     setup_bot()
+
