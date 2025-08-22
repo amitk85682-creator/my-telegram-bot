@@ -64,28 +64,42 @@ def update_movies_in_db():
     cur = conn.cursor()
     cur.execute("SELECT title FROM movies;")
     existing_movies = {row[0] for row in cur.fetchall()}
-
+    
     try:
         service = build('blogger', 'v3', developerKey=BLOGGER_API_KEY)
-        posts = []
-        request = service.posts().list(blogId=BLOG_ID)
-        while request is not None:
-            response = request.execute()
-            posts.extend(response.get('items', []))
-            request = service.posts().list_next(request, response)
-        print(f"Found {len(posts)} posts on the blog.")
+        all_items = []
 
+        # 1. पहले सारे Posts निकालें
+        print("Fetching posts...")
+        posts_request = service.posts().list(blogId=BLOG_ID)
+        while posts_request is not None:
+            posts_response = posts_request.execute()
+            all_items.extend(posts_response.get('items', []))
+            posts_request = service.posts().list_next(posts_request, posts_response)
+        print(f"Found {len(all_items)} posts.")
+
+        # 2. अब सारे Pages निकालें
+        print("Fetching pages...")
+        pages_request = service.pages().list(blogId=BLOG_ID)
+        pages_response = pages_request.execute()
+        pages_found = pages_response.get('items', [])
+        if pages_found:
+            all_items.extend(pages_found)
+            print(f"Found {len(pages_found)} pages.")
+
+        print(f"Total items (posts + pages) found: {len(all_items)}")
+        
         new_movies_added = 0
-        for post in posts:
-            title = post['title']
-            url = post['url']
-            if title not in existing_movies:
+        for item in all_items:
+            title = item['title']
+            url = item['url']
+            if title and title not in existing_movies: # सुनिश्चित करें कि टाइटल खाली न हो
                 cur.execute("INSERT INTO movies (title, url) VALUES (%s, %s);", (title, url))
-                print(f"Adding new movie: {title}")
+                print(f"Adding new item: {title}")
                 new_movies_added += 1
         conn.commit()
-        print(f"Added {new_movies_added} new movies.")
-        return f"Update complete. Added {new_movies_added} new movies."
+        print(f"Added {new_movies_added} new items to the database.")
+        return f"Update complete. Added {new_movies_added} new items."
     except Exception as e:
         print(f"Error during movie update: {e}")
         return "An error occurred during update."
@@ -166,4 +180,5 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
     setup_bot()
+
 
