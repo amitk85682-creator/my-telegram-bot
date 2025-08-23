@@ -153,9 +153,14 @@ def setup_bot():
         await update.message.reply_text("क्या हाल है? मैं मानवी। 😉 फिल्मों पर गपशप करनी है।")
 
     async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        user_message = update.message.text
-        print(f"Received message: {user_message}")
-        movie_found = get_movie_from_db(user_message)
+    # --- यह नई जांच है ---
+    if not update.message or not update.message.text:
+        return  # अगर मैसेज में टेक्स्ट नहीं है, तो कुछ मत करो
+    # --- जांच समाप्त ---
+
+    user_message = update.message.text
+    print(f"Received message: {user_message}")
+    # ... बाकी का कोड वैसा ही रहेगा ...
         if movie_found:
             title, url = movie_found
             reply = f"हाँ! '{title}' ओहो, great choice! ये रही तेरी मूवी: {url}"
@@ -180,6 +185,7 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
     setup_bot()
+
 
 
 
