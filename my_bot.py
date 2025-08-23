@@ -164,16 +164,16 @@ def setup_bot():
 
     if movie_found:
         title, url = movie_found
-            reply = f"हाँ! '{title}' ओहो, great choice! ये रही तेरी मूवी: {url}"
-            await update.message.reply_text(reply)
-        else:
-            try:
-                response = chat.send_message(user_message)
-                ai_response = response.text
-                await update.message.reply_text(ai_response)
-            except Exception as e:
-                print(f"Error: {e}")
-                await update.message.reply_text("अरे यार, दिमाग का दही हो गया है। कुछ गड़बड़ है, बाद में ट्राई कर।")
+        reply = f"हाँ! '{title}' ओहो, great choice! ये रही तेरी मूवी: {url}"
+        await update.message.reply_text(reply)
+    else:
+        try:
+            response = chat.send_message(user_message)
+            ai_response = response.text
+            await update.message.reply_text(ai_response)
+        except Exception as e:
+            print(f"Error: {e}")
+            await update.message.reply_text("अरे यार, दिमाग का दही हो गया है। कुछ गड़बड़ है, बाद में ट्राई कर।")
 
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -186,6 +186,7 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
     setup_bot()
+
 
 
 
