@@ -3,3 +3,4 @@ google-generativeai
 Flask
 psycopg2-binary
 google-api-python-client
+beautifulsoup4
