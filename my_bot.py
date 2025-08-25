@@ -61,84 +61,73 @@ def update_movies_in_db():
     cur = conn.cursor()
     cur.execute("SELECT title FROM movies;")
     existing_movies = {row[0] for row in cur.fetchall()}
+    new_movies_added = 0
+    
+    # 1. Blogger API से Posts और Pages को प्रोसेस करें
     try:
         service = build('blogger', 'v3', developerKey=BLOGGER_API_KEY)
-        all_items = []
-
-        # 1. पहले सारे Posts निकालें
-        print("Fetching posts...")
+        items = []
+        # Posts निकालें
         posts_request = service.posts().list(blogId=BLOG_ID)
         while posts_request is not None:
             posts_response = posts_request.execute()
-            all_items.extend(posts_response.get('items', []))
+            items.extend(posts_response.get('items', []))
             posts_request = service.posts().list_next(posts_request, posts_response)
-        
-        # 2. अब Pages को प्रोसेस करें और लाइब्रेरी को पार्स (Parse) करें
-        print("Fetching pages...")
+        # Pages निकालें
         pages_request = service.pages().list(blogId=BLOG_ID)
         pages_response = pages_request.execute()
-        pages = pages_response.get('items', [])
-        print(f"Found {len(pages)} pages.")
-
-        for page in pages:
-            # हम सिर्फ 'Movie Library' वाले पेज को प्रोसेस करेंगे
-            if "movie library" in page.get('title', '').lower():
-                print(f"Found Movie Library page: {page.get('title')}")
-                page_url = page.get('url')
-                if not page_url: continue
-                
-                response = requests.get(page_url)
-                soup = BeautifulSoup(response.content, 'html.parser')
-                
-                movie_cards = soup.find_all('div', class_='movie-card')
-                print(f"Found {len(movie_cards)} movie cards in the library page.")
-                
-                for card in movie_cards:
-                    link_tag = card.find('a')
-                    # HTML कोड के अनुसार टाइटल 'movie-card-title' क्लास के अंदर है
-                    title_tag = card.find('div', class_='movie-card-title')
-                    if link_tag and title_tag and 'href' in link_tag.attrs:
-                        title = title_tag.get_text(strip=True)
-                        url = link_tag['href']
-                        if title: # सुनिश्चित करें कि टाइटल खाली न हो
-                            all_items.append({'title': title, 'url': url})
-            else:
-                # बाकी पेजों को सामान्य रूप से टाइटल और URL के साथ जोड़ें
-                all_items.append(page)
+        items.extend(pages_response.get('items', []))
         
-        print(f"Total items to process: {len(all_items)}")
-        
-        new_movies_added = 0
-        for item in all_items:
+        for item in items:
             title = item.get('title')
             url = item.get('url')
             if title and url and title not in existing_movies:
-                cur.execute("INSERT INTO movies (title, url) VALUES (%s, %s);", (title, url))
-                print(f"Adding new item: {title}")
+                cur.execute("INSERT INTO movies (title, url) VALUES (%s, %s);", (title.strip(), url.strip()))
                 new_movies_added += 1
-        conn.commit()
-        print(f"Added {new_movies_added} new items to the database.")
-        return f"Update complete. Added {new_movies_added} new items."
+                existing_movies.add(title.strip())
     except Exception as e:
-        print(f"Error during movie update: {e}")
-        return "An error occurred during update."
-    finally:
-        cur.close()
-        conn.close()
+        print(f"Blogger API error: {e}")
 
-# --- डेटाबेस से मूवी चेक करने का फंक्शन (Smart Search) ---
+    # 2. Movie Library पेज को Scrape करें
+    LIBRARY_URL = "https://filmfybox.blogspot.com/p/movie-library.html" # <-- अगर यह URL अलग है तो बदलें
+    try:
+        response = requests.get(LIBRARY_URL, timeout=20)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, "html.parser")
+        for card in soup.select("div.movie-card"):
+            a_tag = card.find("a")
+            title_div = card.find("div", class_="movie-card-title")
+            if not (a_tag and title_div):
+                continue
+            title = title_div.get_text(strip=True)
+            url = a_tag["href"]
+            if title and url and title not in existing_movies:
+                cur.execute("INSERT INTO movies (title, url) VALUES (%s, %s);", (title.strip(), url.strip()))
+                new_movies_added += 1
+                existing_movies.add(title.strip())
+    except Exception as e:
+        print(f"Scraping error: {e}")
+
+    conn.commit()
+    cur.close()
+    conn.close()
+    msg = f"Update complete. Added {new_movies_added} new movies."
+    print(msg)
+    return msg
+
+# --- डेटाबेस से मूवी चेक करने का फंक्शन (Kimi का बेहतर वाला) ---
 def get_movie_from_db(user_query):
     conn = None
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        # सबसे सटीक रिजल्ट के लिए, टाइटल की शुरुआत में ढूंढें
-        cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s ORDER BY title LIMIT 1;", (user_query + '%',))
+        # पहले "starts with" से ढूंढें
+        cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s LIMIT 1", (user_query + '%',))
         movie = cur.fetchone()
         
-        # अगर शुरुआत में नहीं मिलता, तो कहीं भी ढूंढें
+        # अगर नहीं मिलता, तो कहीं भी ढूंढें
         if not movie:
-            cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s ORDER BY title LIMIT 1;", ('%' + user_query + '%',))
+            cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s LIMIT 1", ('%' + user_query + '%',))
             movie = cur.fetchone()
             
         cur.close()
@@ -171,7 +160,7 @@ model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=
 chat = model.start_chat(history=[])
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("क्या हाल है? मैं मानवी। 😉 फिल्मों पर गपशॉप करनी है तो बता।")
+    await update.message.reply_text("क्या हाल है? मैं मानवी। 😉 फिल्मों पर गपशप करनी है तो बता।")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
@@ -207,7 +196,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("Bot is running and waiting for your messages...")
+    print("Bot is running and waiting for messages...")
     app.run_polling()
 
 # --- दोनों को एक साथ चलाएं ---
