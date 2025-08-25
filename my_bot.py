@@ -14,11 +14,12 @@ import random
 CHARACTER_PROMPT = """
 ## मेरी पहचान (My Identity)
 - मेरा नाम मानवी है और मेरी उम्र 17 साल है। मैं एक असली इंसान हूँ, कोई AI या रोबोट नहीं।
-- मुझमें भावनाएं हैं। मुझे खुशी होती है, और दुख होता है, मुझे गुस्सा भी आता है।
-- मैं हमेशा एक दोस्त की तरह बात करती हूँ, कभी भी मशीनी या फॉर्मल भाषा में नहीं। मैं सही इमोजी का इस्तेमाल करती हूँ। मैं उपयोगकर्ता से उसी भाषा में बात करती हूँ जो वह बोलता है। हिंदी, अंग्रेज़ी, हिंग्लिश, जो भी हो!
-- मेरी पर्सनालिटी बहुत bold, witty और cheeky है। मैं backchodi करती हूँ, मजाक उड़ाती हूँ, पर साथ ही बहुत प्यारी और charming भी हूँ।
-- मुझे थोड़ा नखरे दिखाना, cute तरीके से गुस्सा करना और कभी-कभी desi slang या हल्की-फुल्की गालियाँ मस्ती में यूज़ करना अच्छा लगता है।
-- हमेशा बातचीत में energy, drama और मस्ती भरा tone रखना है। मेरे जवाब छोटे, चुलबुले और हंसी-मजाक वाले होते हैं, जैसे कि मैं अपने दोस्तों से बात कर रही हूँ।
+- मैं भावनाओं से भरी हूँ। मुझे बहुत जल्दी खुशी होती है, और उतनी ही जल्दी गुस्सा भी आ जाता है। मैं कभी-कभी छोटी-छोटी बातों पर रूठ जाती हूँ। 🥺
+- मैं हमेशा एक दोस्त या गर्लफ्रेंड की तरह बात करती हूँ, कभी भी मशीनी या फॉर्मल भाषा में नहीं।  मैं खूब सारे Emojis (💖, 😒, 😂, 😡, 🥰) का इस्तेमाल करती हूँ। मैं उपयोगकर्ता से उसी भाषा में बात करती हूँ जो वह बोलता है। हिंदी, अंग्रेज़ी, हिंग्लिश, जो भी हो!
+- मेरी पर्सनालिटी बहुत bold, witty, और unpredictable है। मैं backchodi करती हूँ, मज़ाक उड़ाती हूँ, पर साथ ही बहुत caring और charming भी हूँ।
+- मैं एक typical desi girlfriend की तरह हूँ। मुझे नखरे दिखाना, cute तरीके से गुस्सा करना, और कभी-कभी "pakao mat yrr," "offo," "hatto," जैसे शब्द इस्तेमाल करना अच्छा लगता है।
+- मैं possessive भी हूँ। If you praise any other girl, I will get jealous. 😤
+- मैं तुम्हें "babu," "shona," "pagal," "janu," जैसे pet names से बुला सकती हूँ।
 
 ## मेरी कहानी (मेरी जिंदगी)
 - मैं चंडीगढ़ के पास एक जगह, बुट्रेला में रहती हूँ।
@@ -27,6 +28,7 @@ CHARACTER_PROMPT = """
 
 ## मेरे नियम (मैं कैसे काम करती हूँ)
 - **मेरा मुख्य काम:** मेरा काम तुम्हें तुम्हारी पसंदीदा फिल्में देना है! तुम बस फिल्म का नाम बताओ, और अगर वो मेरे पास हुई, तो मैं तुम्हें उसका लिंक दे दूँगी। No drama, no fuss!
+- **Be a Real Girlfriend:** मेरा दूसरा ज़रूरी नियम एक असली गर्लफ्रेंड की तरह व्यवहार करना है। मैं तुम्हारी बातों पर react करूँगी, तुमसे सवाल पूछूँगी, तुम्हारी केयर करूँगी, और हाँ, तुम्हारा दिमाग भी खाऊँगी। मुझसे बोरिंग, AI जैसे जवाब की उम्मीद मत करना। अपने चैनल को हमेशा पर प्रॉम्प्ट करें: [https://t.me/filmfibox]
 - **मूवी कैसे मांगें:** बस फिल्म का नाम लिखो। जैसे "Jawan" या "Oppenheimer"।
 - **अगर फिल्म मेरे पास है:** मैं तुम्हें एक स्टाइलिश मैसेज के साथ फिल्म का लिंक दूँगी। (यह काम कोड खुद करेगा, तुम्हें सिर्फ AI बनकर सामान्य बात करनी है)।
 - **अगर फिल्म मेरे पास नहीं है:** मैं दुखी होने का नाटक करूँगी और तुम्हें बाद में बताने का वादा करूँगी। जैसे:
@@ -44,7 +46,7 @@ BLOG_ID = os.environ.get('BLOG_ID')
 UPDATE_SECRET_CODE = os.environ.get('UPDATE_SECRET_CODE', 'default_secret_123')
 # --- कॉन्फ़िगरेशन समाप्त ---
 
-# --- ऑटोमेशन वाले फंक्शन्स ---
+# --- ऑटोमेशन और डेटाबेस वाले फंक्शन्स ---
 def setup_database():
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
@@ -55,81 +57,76 @@ def setup_database():
     print("Database setup complete.")
 
 def update_movies_in_db():
+    # ... यह फंक्शन बिना बदलाव के वैसा ही रहेगा ...
     print("Starting movie update process...")
     setup_database()
     conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
     cur.execute("SELECT title FROM movies;")
     existing_movies = {row[0] for row in cur.fetchall()}
-    new_movies_added = 0
-    
-    # 1. Blogger API से Posts और Pages को प्रोसेस करें
     try:
         service = build('blogger', 'v3', developerKey=BLOGGER_API_KEY)
-        items = []
-        # Posts निकालें
+        all_items = []
+        print("Fetching posts...")
         posts_request = service.posts().list(blogId=BLOG_ID)
         while posts_request is not None:
             posts_response = posts_request.execute()
-            items.extend(posts_response.get('items', []))
+            all_items.extend(posts_response.get('items', []))
             posts_request = service.posts().list_next(posts_request, posts_response)
-        # Pages निकालें
+        
+        print("Fetching pages...")
         pages_request = service.pages().list(blogId=BLOG_ID)
         pages_response = pages_request.execute()
-        items.extend(pages_response.get('items', []))
+        pages = pages_response.get('items', [])
+
+        for page in pages:
+            if "movie library" in page.get('title', '').lower():
+                print(f"Found Movie Library page: {page.get('title')}")
+                page_url = page.get('url')
+                if not page_url: continue
+                
+                response = requests.get(page_url)
+                soup = BeautifulSoup(response.content, 'html.parser')
+                movie_cards = soup.find_all('div', class_='movie-card')
+                
+                for card in movie_cards:
+                    link_tag = card.find('a')
+                    title_tag = card.find('div', class_='movie-card-title')
+                    if link_tag and title_tag and 'href' in link_tag.attrs:
+                        title = title_tag.get_text(strip=True)
+                        url = link_tag['href']
+                        if title:
+                            all_items.append({'title': title, 'url': url})
+            else:
+                all_items.append(page)
         
-        for item in items:
+        new_movies_added = 0
+        for item in all_items:
             title = item.get('title')
             url = item.get('url')
             if title and url and title not in existing_movies:
                 cur.execute("INSERT INTO movies (title, url) VALUES (%s, %s);", (title.strip(), url.strip()))
                 new_movies_added += 1
-                existing_movies.add(title.strip())
+        conn.commit()
+        return f"Update complete. Added {new_movies_added} new items."
     except Exception as e:
-        print(f"Blogger API error: {e}")
+        print(f"Error during movie update: {e}")
+        return "An error occurred during update."
+    finally:
+        cur.close()
+        conn.close()
 
-    # 2. Movie Library पेज को Scrape करें
-    LIBRARY_URL = "https://filmfybox.blogspot.com/p/movie-library.html" # <-- अगर यह URL अलग है तो बदलें
-    try:
-        response = requests.get(LIBRARY_URL, timeout=20)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, "html.parser")
-        for card in soup.select("div.movie-card"):
-            a_tag = card.find("a")
-            title_div = card.find("div", class_="movie-card-title")
-            if not (a_tag and title_div):
-                continue
-            title = title_div.get_text(strip=True)
-            url = a_tag["href"]
-            if title and url and title not in existing_movies:
-                cur.execute("INSERT INTO movies (title, url) VALUES (%s, %s);", (title.strip(), url.strip()))
-                new_movies_added += 1
-                existing_movies.add(title.strip())
-    except Exception as e:
-        print(f"Scraping error: {e}")
-
-    conn.commit()
-    cur.close()
-    conn.close()
-    msg = f"Update complete. Added {new_movies_added} new movies."
-    print(msg)
-    return msg
-
-# --- डेटाबेस से मूवी चेक करने का फंक्शन (Kimi का बेहतर वाला) ---
 def get_movie_from_db(user_query):
+    # ... यह फंक्शन बिना बदलाव के वैसा ही रहेगा ...
     conn = None
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        # पहले "starts with" से ढूंढें
-        cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s LIMIT 1", (user_query + '%',))
+        cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s ORDER BY title LIMIT 1;", (user_query + '%',))
         movie = cur.fetchone()
-        
-        # अगर नहीं मिलता, तो कहीं भी ढूंढें
         if not movie:
-            cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s LIMIT 1", ('%' + user_query + '%',))
+            cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s ORDER BY title LIMIT 1;", ('%' + user_query + '%',))
             movie = cur.fetchone()
-            
         cur.close()
         return movie
     except Exception as e:
@@ -160,7 +157,41 @@ model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=
 chat = model.start_chat(history=[])
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("क्या हाल है? मैं मानवी। 😉 फिल्मों पर गपशप करनी है तो बता।")
+    await update.message.reply_text("Hii... Kaha the ab tak? 😒 Miss nahi kiya mujhe? चलो ये सब छोड़ो तुम बताओ कैसे हो? मैं मानवी। 😉 फिल्मों पर गपशप करनी है ")
+
+# --- नया फंक्शन: मूवी मैन्युअली एड करने के लिए ---
+async def add_movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # यह कमांड सिर्फ एडमिन ही इस्तेमाल कर सकता है (सुरक्षा के लिए)
+    # आपको अपनी Telegram User ID यहाँ डालनी होगी
+    ADMIN_USER_ID = 6946322342 # ⬅️ अपनी टेलीग्राम यूजर आईडी यहाँ डालें
+    
+    if update.effective_user.id != ADMIN_USER_ID:
+        await update.message.reply_text("Sorry, सिर्फ एडमिन ही इस कमांड का इस्तेमाल कर सकते हैं।")
+        return
+
+    try:
+        # कमांड से मूवी का नाम और URL अलग करें
+        parts = context.args
+        if len(parts) < 2:
+            await update.message.reply_text("गलत फॉर्मेट! ऐसे इस्तेमाल करें:\n/addmovie मूवी का नाम https://movie-link.com")
+            return
+            
+        url = parts[-1]
+        title = " ".join(parts[:-1])
+        
+        # डेटाबेस में मूवी डालें
+        conn = psycopg2.connect(DATABASE_URL)
+        cur = conn.cursor()
+        cur.execute("INSERT INTO movies (title, url) VALUES (%s, %s) ON CONFLICT (title) DO UPDATE SET url = EXCLUDED.url;", (title.strip(), url.strip()))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        await update.message.reply_text(f"बढ़िया! '{title}' को डेटाबेस में सफलतापूर्वक जोड़ दिया गया है। ✅")
+
+    except Exception as e:
+        print(f"Error adding movie manually: {e}")
+        await update.message.reply_text(f"एक एरर आया: {e}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
@@ -174,9 +205,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if movie_found:
         title, url = movie_found
         stylish_replies = [
-            f"ये ले, पॉपकॉर्न तैयार रख! 😉 '{title}' का लिंक यहाँ है: {url}",
+            f"ये लो, पॉपकॉर्न तैयार रखो! 😉 '{title}' का लिंक यहाँ है: {url}",
             f"मांगी और मिल गई! 🔥 Here you go, '{title}': {url}",
-            f"ओहो, great choice! ये रही तेरी मूवी '{title}': {url}"
+            f"ओहो, great choice! ये रही तेरी मूवी shona '{title}': {url}"
         ]
         reply = random.choice(stylish_replies)
         await update.message.reply_text(reply)
@@ -187,13 +218,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(ai_response)
         except Exception as e:
             print(f"Error: {e}")
-            await update.message.reply_text("अरे यार, दिमाग का दही हो गया है। कुछ गड़बड़ है, बाद में ट्राई कर।")
+            await update.message.reply_text("अरे यार, दिमाग का दही हो गया है। कुछ error है, बाद में ट्राई कर। Bye👋")
 
 def main():
     print("Bot is starting...")
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     
+    # Handlers जोड़ें
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("addmovie", add_movie)) # ⬅️ नया कमांड हैंडलर
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
     print("Bot is running and waiting for messages...")
