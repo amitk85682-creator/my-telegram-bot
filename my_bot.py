@@ -194,20 +194,36 @@ async def add_movie(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"एक एरर आया: {e}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # --- यह नया और स्मार्ट लॉजिक है ---
+    # दूसरे बॉट का यूजरनेम यहाँ डालें ताकि मानवी उसे परेशान न करे
+    NIYATI_USERNAME = "Niyati_personal_bot" 
+    
+    # जांचें कि क्या यह मैसेज नियति को किया गया रिप्लाई है
+    is_reply_to_niyati = (
+        update.message.reply_to_message 
+        and update.message.reply_to_message.from_user.username == NIYATI_USERNAME
+    )
+
+    if is_reply_to_niyati:
+        return # अगर कोई नियति से बात कर रहा है, तो मानवी चुप रहेगी
+    # --- लॉजिक समाप्त ---
+    
     if not update.message or not update.message.text:
         return
 
-    user_message = update.message.text
-    print(f"Received message: {user_message}")
+    # मैसेज से बॉट का नाम हटा दें (अगर मेन्शन किया गया हो तो)
+    bot_username = context.bot.username
+    user_message = update.message.text.replace(f"@{bot_username}", "").strip()
+    print(f"Received message for Manvi: {user_message}")
     
     movie_found = get_movie_from_db(user_message)
 
     if movie_found:
         title, url = movie_found
         stylish_replies = [
-            f"ये लो, पॉपकॉर्न तैयार रखो! 😉 '{title}' का लिंक यहाँ है: {url}",
+            f"ये ले, पॉपकॉर्न तैयार रख! 😉 '{title}' का लिंक यहाँ है: {url}",
             f"मांगी और मिल गई! 🔥 Here you go, '{title}': {url}",
-            f"ओहो, great choice! ये रही तेरी मूवी shona '{title}': {url}"
+            f"ओहो, great choice! ये रही तेरी मूवी '{title}': {url}"
         ]
         reply = random.choice(stylish_replies)
         await update.message.reply_text(reply)
@@ -218,7 +234,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(ai_response)
         except Exception as e:
             print(f"Error: {e}")
-            await update.message.reply_text("अरे यार, दिमाग का दही हो गया है। कुछ error है, बाद में ट्राई कर। Bye👋")
+            await update.message.reply_text("अरे यार, दिमाग का दही हो गया है। Code me कुछ गड़बड़ है, बाद में ट्राई कर। Bye👋")
 
 def main():
     print("Bot is starting...")
@@ -237,3 +253,4 @@ if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
     main()
+
