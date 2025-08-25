@@ -6,8 +6,10 @@ import google.generativeai as genai
 from googleapiclient.discovery import build
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import requests
+from bs4 import BeautifulSoup
 
-# --- 1. आपका नया कैरेक्टर प्रॉम्प्ट ---
+# --- 1. अपना कैरेक्टर प्रॉम्प्ट (यह वैसा ही रहेगा) ---
 CHARACTER_PROMPT = """
 ## मेरी पहचान (My Identity)
 - मेरा नाम मानवी है और मेरी उम्र 17 साल है। मैं एक असली इंसान हूँ, कोई AI या रोबोट नहीं।
@@ -61,21 +63,50 @@ def update_movies_in_db():
     try:
         service = build('blogger', 'v3', developerKey=BLOGGER_API_KEY)
         all_items = []
+
+        # 1. पहले सारे Posts निकालें
         print("Fetching posts...")
         posts_request = service.posts().list(blogId=BLOG_ID)
         while posts_request is not None:
             posts_response = posts_request.execute()
             all_items.extend(posts_response.get('items', []))
             posts_request = service.posts().list_next(posts_request, posts_response)
-        print(f"Found {len(all_items)} posts.")
+        
+        # 2. अब Pages को प्रोसेस करें और लाइब्रेरी को पार्स (Parse) करें
         print("Fetching pages...")
         pages_request = service.pages().list(blogId=BLOG_ID)
         pages_response = pages_request.execute()
-        pages_found = pages_response.get('items', [])
-        if pages_found:
-            all_items.extend(pages_found)
-            print(f"Found {len(pages_found)} pages.")
-        print(f"Total items (posts + pages) found: {len(all_items)}")
+        pages = pages_response.get('items', [])
+        print(f"Found {len(pages)} pages.")
+
+        for page in pages:
+            # हम सिर्फ 'Movie Library' वाले पेज को प्रोसेस करेंगे
+            if "movie library" in page.get('title', '').lower():
+                print(f"Found Movie Library page: {page.get('title')}")
+                page_url = page.get('url')
+                if not page_url: continue
+                
+                # पेज का HTML कंटेंट पाएं
+                response = requests.get(page_url)
+                soup = BeautifulSoup(response.content, 'html.parser')
+                
+                # आपके HTML स्ट्रक्चर के अनुसार, हर मूवी 'movie-card' div में है
+                movie_cards = soup.find_all('div', class_='movie-card')
+                print(f"Found {len(movie_cards)} movie cards in the library page.")
+                
+                for card in movie_cards:
+                    link_tag = card.find('a')
+                    title_tag = card.find('div', class_='movie-card-title')
+                    if link_tag and title_tag and 'href' in link_tag.attrs:
+                        title = title_tag.get_text(strip=True)
+                        url = link_tag['href']
+                        all_items.append({'title': title, 'url': url})
+            else:
+                # बाकी पेजों को सामान्य रूप से जोड़ें
+                all_items.append(page)
+        
+        print(f"Total items to process: {len(all_items)}")
+        
         new_movies_added = 0
         for item in all_items:
             title = item.get('title')
@@ -94,7 +125,8 @@ def update_movies_in_db():
         cur.close()
         conn.close()
 
-# --- डेटाबेस से मूवी चेक करने का फंक्शन ---
+# --- बाकी का कोड बिना बदलाव के वैसा ही रहेगा ---
+
 def get_movie_from_db(user_query):
     conn = None
     try:
@@ -111,7 +143,6 @@ def get_movie_from_db(user_query):
         if conn:
             conn.close()
 
-# --- Flask App ---
 flask_app = Flask('')
 @flask_app.route('/')
 def home():
@@ -126,7 +157,6 @@ def run_flask():
     port = int(os.environ.get('PORT', 8080))
     flask_app.run(host='0.0.0.0', port=port)
 
-# --- Telegram Bot का लॉजिक ---
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=CHARACTER_PROMPT)
 chat = model.start_chat(history=[])
@@ -145,7 +175,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if movie_found:
         title, url = movie_found
-        # प्रॉम्प्ट से कुछ स्टाइलिश जवाब चुनें
         stylish_replies = [
             f"ये ले, पॉपकॉर्न तैयार रख! 😉 '{title}' का लिंक यहाँ है: {url}",
             f"मांगी और मिल गई! 🔥 Here you go, '{title}': {url}",
@@ -173,7 +202,6 @@ def main():
     print("Bot is running and waiting for messages...")
     app.run_polling()
 
-# --- दोनों को एक साथ चलाएं ---
 if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
