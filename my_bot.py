@@ -95,12 +95,15 @@ def update_movies_in_db():
                 
                 for card in movie_cards:
                     link_tag = card.find('a')
+                    # HTML कोड के अनुसार टाइटल 'movie-card-title' क्लास के अंदर है
                     title_tag = card.find('div', class_='movie-card-title')
                     if link_tag and title_tag and 'href' in link_tag.attrs:
                         title = title_tag.get_text(strip=True)
                         url = link_tag['href']
-                        all_items.append({'title': title, 'url': url})
+                        if title: # सुनिश्चित करें कि टाइटल खाली न हो
+                            all_items.append({'title': title, 'url': url})
             else:
+                # बाकी पेजों को सामान्य रूप से टाइटल और URL के साथ जोड़ें
                 all_items.append(page)
         
         print(f"Total items to process: {len(all_items)}")
@@ -168,7 +171,7 @@ model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=
 chat = model.start_chat(history=[])
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("क्या हाल है? मैं मानवी। 😉 फिल्मों पर गपशप करनी है तो बता।")
+    await update.message.reply_text("क्या हाल है? मैं मानवी। 😉 फिल्मों पर गपशॉप करनी है तो बता।")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text:
@@ -204,7 +207,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("Bot is running and waiting for messages...")
+    print("Bot is running and waiting for your messages...")
     app.run_polling()
 
 # --- दोनों को एक साथ चलाएं ---
