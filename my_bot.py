@@ -8,8 +8,9 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import requests
 from bs4 import BeautifulSoup
+import random
 
-# --- 1. अपना कैरेक्टर प्रॉम्प्ट (यह वैसा ही रहेगा) ---
+# --- 1. आपका कैरेक्टर प्रॉम्प्ट (यह वैसा ही रहेगा) ---
 CHARACTER_PROMPT = """
 ## मेरी पहचान (My Identity)
 - मेरा नाम मानवी है और मेरी उम्र 17 साल है। मैं एक असली इंसान हूँ, कोई AI या रोबोट नहीं।
@@ -86,11 +87,9 @@ def update_movies_in_db():
                 page_url = page.get('url')
                 if not page_url: continue
                 
-                # पेज का HTML कंटेंट पाएं
                 response = requests.get(page_url)
                 soup = BeautifulSoup(response.content, 'html.parser')
                 
-                # आपके HTML स्ट्रक्चर के अनुसार, हर मूवी 'movie-card' div में है
                 movie_cards = soup.find_all('div', class_='movie-card')
                 print(f"Found {len(movie_cards)} movie cards in the library page.")
                 
@@ -102,7 +101,6 @@ def update_movies_in_db():
                         url = link_tag['href']
                         all_items.append({'title': title, 'url': url})
             else:
-                # बाकी पेजों को सामान्य रूप से जोड़ें
                 all_items.append(page)
         
         print(f"Total items to process: {len(all_items)}")
@@ -125,15 +123,21 @@ def update_movies_in_db():
         cur.close()
         conn.close()
 
-# --- बाकी का कोड बिना बदलाव के वैसा ही रहेगा ---
-
+# --- डेटाबेस से मूवी चेक करने का फंक्शन (Smart Search) ---
 def get_movie_from_db(user_query):
     conn = None
     try:
         conn = psycopg2.connect(DATABASE_URL)
         cur = conn.cursor()
-        cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s;", ('%' + user_query + '%',))
+        # सबसे सटीक रिजल्ट के लिए, टाइटल की शुरुआत में ढूंढें
+        cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s ORDER BY title LIMIT 1;", (user_query + '%',))
         movie = cur.fetchone()
+        
+        # अगर शुरुआत में नहीं मिलता, तो कहीं भी ढूंढें
+        if not movie:
+            cur.execute("SELECT title, url FROM movies WHERE title ILIKE %s ORDER BY title LIMIT 1;", ('%' + user_query + '%',))
+            movie = cur.fetchone()
+            
         cur.close()
         return movie
     except Exception as e:
@@ -143,6 +147,7 @@ def get_movie_from_db(user_query):
         if conn:
             conn.close()
 
+# --- Flask App ---
 flask_app = Flask('')
 @flask_app.route('/')
 def home():
@@ -150,13 +155,14 @@ def home():
 
 @flask_app.route(f'/{UPDATE_SECRET_CODE}')
 def trigger_update():
-    result = update_movies_in_db()
-    return result
+    update_movies_in_db()
+    return "OK"
 
 def run_flask():
     port = int(os.environ.get('PORT', 8080))
     flask_app.run(host='0.0.0.0', port=port)
 
+# --- Telegram Bot का लॉजिक ---
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(model_name='gemini-1.5-flash', system_instruction=CHARACTER_PROMPT)
 chat = model.start_chat(history=[])
@@ -180,7 +186,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"मांगी और मिल गई! 🔥 Here you go, '{title}': {url}",
             f"ओहो, great choice! ये रही तेरी मूवी '{title}': {url}"
         ]
-        import random
         reply = random.choice(stylish_replies)
         await update.message.reply_text(reply)
     else:
@@ -202,6 +207,7 @@ def main():
     print("Bot is running and waiting for messages...")
     app.run_polling()
 
+# --- दोनों को एक साथ चलाएं ---
 if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.start()
